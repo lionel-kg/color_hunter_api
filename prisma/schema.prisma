@@ -55,6 +55,10 @@ model User {
   receivedFriendships Friendship[]     @relation("FriendshipReceiver")
   sentMessages       DirectMessage[]   @relation("DMSender")
   receivedMessages   DirectMessage[]   @relation("DMReceiver")
+  gridLikes          GridLike[]
+  gridComments       GridComment[]
+  notifications      Notification[]
+  triggeredNotifs    Notification[]    @relation("NotificationActor")
 }
 
 model RefreshToken {
@@ -177,6 +181,9 @@ model Grid {
   createdAt  DateTime       @default(now())
   photos     GridPhoto[]
 
+  likes      GridLike[]
+  comments   GridComment[]
+
   @@unique([gameId, userId])
   @@index([userId])
 }
@@ -205,6 +212,55 @@ model DirectMessage {
 
   @@index([senderId, receiverId])
   @@index([receiverId, senderId])
+}
+
+// ─── LIKES & COMMENTAIRES ────────────────────────────────────────────
+model GridLike {
+  id        String   @id @default(cuid())
+  gridId    String
+  grid      Grid     @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([gridId, userId])
+  @@index([gridId])
+}
+
+model GridComment {
+  id        String   @id @default(cuid())
+  gridId    String
+  grid      Grid     @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String   @db.VarChar(500)
+  createdAt DateTime @default(now())
+
+  @@index([gridId])
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────
+enum NotificationType {
+  FRIEND_REQUEST    // demande d'ami reçue
+  FRIEND_ACCEPTED   // ami accepté
+  GRID_LIKE         // quelqu'un a liké ta grille
+  GRID_COMMENT      // quelqu'un a commenté ta grille
+  GAME_STARTED      // une partie a démarré
+  DM                // message direct reçu
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  actorId   String?          // qui a déclenché la notif
+  actor     User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  entityId  String?          // gridId, gameId, friendshipId selon le type
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
 }
 
 // ─── AMIS ────────────────────────────────────────────────────────────

@@ -11,6 +11,8 @@ import { gridsRouter } from './routes/grids.js';
 import { photosRouter } from './routes/photos.js';
 import { usersRouter } from './routes/users.js';
 import { messagesRouter } from './routes/messages.js';
+import { likesRouter, commentsRouter } from './routes/likes.js';
+import { notificationsRouter } from './routes/notifications.js';
 import { errorHandler } from './middleware/error.js';
 import { registerGameSockets } from './sockets/games.js';
 import { prisma } from './lib/prisma.js';
@@ -47,6 +49,9 @@ app.use('/api/games', gamesRouter);
 app.use('/api/photos', photosRouter);
 app.use('/api/grids', gridsRouter);
 app.use('/api/messages', messagesRouter);
+app.use('/api/likes', likesRouter);
+app.use('/api/comments', commentsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 app.use(errorHandler);
 
