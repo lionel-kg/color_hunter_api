@@ -20,15 +20,24 @@ const loginSchema = z.object({
 
 authRouter.post('/signup', async (req, res, next) => {
   try {
+    console.log('[signup] body reçu:', JSON.stringify({ ...req.body, password: '***' }));
+    console.log('[signup] ip:', req.ip, '| origin:', req.headers.origin, '| user-agent:', req.headers['user-agent']);
+
     const { pseudo, email, password } = signupSchema.parse(req.body);
+    console.log('[signup] validation ok — pseudo:', pseudo, 'email:', email);
+
     const exists = await prisma.user.findFirst({ where: { OR: [{ email }, { pseudo }] } });
-    if (exists) throw new HttpError(409, 'Email ou pseudo déjà utilisé');
+    if (exists) {
+      console.log('[signup] conflit — email ou pseudo déjà utilisé');
+      throw new HttpError(409, 'Email ou pseudo déjà utilisé');
+    }
 
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
       data: { pseudo, email, passwordHash },
       select: { id: true, pseudo: true, email: true },
     });
+    console.log('[signup] utilisateur créé — id:', user.id);
 
     const access = signAccessToken({ sub: user.id, pseudo: user.pseudo });
     const refresh = signRefreshToken({ sub: user.id, pseudo: user.pseudo });
@@ -36,22 +45,35 @@ authRouter.post('/signup', async (req, res, next) => {
       data: { token: refresh, userId: user.id, expiresAt: new Date(Date.now() + 30 * 86400_000) },
     });
 
+    console.log('[signup] succès — 201');
     res.status(201).json({ user, access, refresh });
   } catch (err) {
+    console.error('[signup] erreur:', err);
     next(err);
   }
 });
 
 authRouter.post('/login', async (req, res, next) => {
   try {
+    console.log('[login] body reçu:', JSON.stringify({ ...req.body, password: '***' }));
+    console.log('[login] ip:', req.ip, '| origin:', req.headers.origin, '| user-agent:', req.headers['user-agent']);
+
     const { email, password } = loginSchema.parse(req.body);
+    console.log('[login] validation ok — email:', email);
+
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) throw new HttpError(401, 'Identifiants invalides');
+    if (!user) {
+      console.log('[login] utilisateur introuvable pour:', email);
+      throw new HttpError(401, 'Identifiants invalides');
+    }
     if (user.status === 'SUPPRIME') throw new HttpError(403, 'Utilisateur supprimé');
     if (user.status === 'DESACTIVATE') throw new HttpError(403, 'Utilisateur désactivé');
 
     const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) throw new HttpError(401, 'Identifiants invalides');
+    if (!ok) {
+      console.log('[login] mot de passe incorrect pour:', email);
+      throw new HttpError(401, 'Identifiants invalides');
+    }
 
     const access = signAccessToken({ sub: user.id, pseudo: user.pseudo });
     const refresh = signRefreshToken({ sub: user.id, pseudo: user.pseudo });
@@ -59,12 +81,14 @@ authRouter.post('/login', async (req, res, next) => {
       data: { token: refresh, userId: user.id, expiresAt: new Date(Date.now() + 30 * 86400_000) },
     });
 
+    console.log('[login] succès — id:', user.id);
     res.json({
       user: { id: user.id, pseudo: user.pseudo, email: user.email, status: user.status, demandStatus: user.demandStatus },
       access,
       refresh,
     });
   } catch (err) {
+    console.error('[login] erreur:', err);
     next(err);
   }
 });
