@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
 import { createServer } from 'http';
 import path from 'path';
 import { Server as SocketServer } from 'socket.io';
@@ -18,6 +19,7 @@ const httpServer = createServer(app);
 
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
 
+app.use(morgan('dev'));
 app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 
