@@ -10,6 +10,7 @@ import { gamesRouter } from './routes/games.js';
 import { gridsRouter } from './routes/grids.js';
 import { photosRouter } from './routes/photos.js';
 import { usersRouter } from './routes/users.js';
+import { messagesRouter } from './routes/messages.js';
 import { errorHandler } from './middleware/error.js';
 import { registerGameSockets } from './sockets/games.js';
 import { prisma } from './lib/prisma.js';
@@ -32,7 +33,7 @@ const corsOptions = {
 
 app.use(morgan('dev'));
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '20mb' }));
 
 if ((process.env.STORAGE_MODE ?? 'local') === 'local') {
   app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
@@ -45,6 +46,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/games', gamesRouter);
 app.use('/api/photos', photosRouter);
 app.use('/api/grids', gridsRouter);
+app.use('/api/messages', messagesRouter);
 
 app.use(errorHandler);
 

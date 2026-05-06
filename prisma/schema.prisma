@@ -53,6 +53,8 @@ model User {
   refreshTokens      RefreshToken[]
   sentFriendships    Friendship[]      @relation("FriendshipSender")
   receivedFriendships Friendship[]     @relation("FriendshipReceiver")
+  sentMessages       DirectMessage[]   @relation("DMSender")
+  receivedMessages   DirectMessage[]   @relation("DMReceiver")
 }
 
 model RefreshToken {
@@ -188,6 +190,21 @@ model GridPhoto {
   gridPosition Int
 
   @@unique([gridId, gridPosition])
+}
+
+// ─── MESSAGES DIRECTS ────────────────────────────────────────────────
+model DirectMessage {
+  id         String   @id @default(cuid())
+  senderId   String
+  sender     User     @relation("DMSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User     @relation("DMReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  text       String   @db.VarChar(1000)
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([senderId, receiverId])
+  @@index([receiverId, senderId])
 }
 
 // ─── AMIS ────────────────────────────────────────────────────────────

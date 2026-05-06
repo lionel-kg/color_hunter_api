@@ -1,5 +1,6 @@
 import type { Server as SocketServer, Socket } from 'socket.io';
 import { verifyAccessToken } from '../lib/jwt.js';
+import { prisma } from '../lib/prisma.js';
 
 let _io: SocketServer;
 
@@ -49,6 +50,33 @@ export function registerGameSockets(io: SocketServer) {
         message: trimmed,
         at: Date.now(),
       });
+    });
+
+    // Message direct entre amis
+    socket.on('dm:send', async ({ receiverId, text }: { receiverId: string; text: string }) => {
+      const trimmed = text?.trim().slice(0, 1000);
+      if (!trimmed) return;
+      try {
+        const friendship = await prisma.friendship.findFirst({
+          where: {
+            status: 'ACCEPTED',
+            OR: [
+              { senderId: user.sub, receiverId },
+              { senderId: receiverId, receiverId: user.sub },
+            ],
+          },
+        });
+        if (!friendship) return;
+
+        const message = await prisma.directMessage.create({
+          data: { senderId: user.sub, receiverId, text: trimmed },
+          include: { sender: { select: { id: true, pseudo: true } } },
+        });
+
+        // Envoyer au destinataire et confirmer à l'expéditeur
+        io.to(`user:${receiverId}`).emit('dm:message', message);
+        socket.emit('dm:message', message);
+      } catch { /* ignore */ }
     });
 
     socket.on('disconnect', () => {

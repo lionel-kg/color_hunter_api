@@ -105,6 +105,8 @@ gamesRouter.post('/join', requireAuth, async (req, res, next) => {
       where: { id: game.id },
       include: { participants: { include: { user: { select: { id: true, pseudo: true } } } }, teams: true },
     });
+
+    getIO().to(`game:${game.id}`).emit('game:joined', fresh);
     res.json(fresh);
   } catch (err) {
     next(err);
