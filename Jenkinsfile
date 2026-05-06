@@ -8,13 +8,6 @@ pipeline {
     }
 
     stages {
-        stage('Database') {
-            steps {
-                echo 'Démarrage de la base de données...'
-                sh 'docker-compose up -d'
-            }
-        }
-
         stage('Docker Build') {
             steps {
                 echo 'Construction de l\'image Docker...'
