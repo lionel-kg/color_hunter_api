@@ -1,0 +1,29 @@
+networks:
+  color-hunter-network:
+    name: color-hunter-network
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    container_name: color-hunter_db
+    environment:
+      MYSQL_ROOT_PASSWORD: adminpassword
+      MYSQL_USER: color-hunter_app
+      MYSQL_PASSWORD: y75dTQHwg8vj86lo08ZuJ7Crqfk
+      MYSQL_DATABASE: color-hunter_app
+      TZ: "UTC"
+    ports:
+      - "3308:3306"
+    networks:
+      - color-hunter-network
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:

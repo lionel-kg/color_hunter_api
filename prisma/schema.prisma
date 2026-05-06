@@ -1,0 +1,212 @@
+// Color Hunt — schéma Prisma (MySQL)
+// Cf. cahier des charges §3 (schéma de données)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USERS ───────────────────────────────────────────────────────────
+// Statuts (cf. §6 du cahier des charges) :
+//   ACTIVE       — compte actif (par défaut)
+//   DEPART       — départ en cours (statut 4)
+//   DESACTIVATE  — désactivé (statut 5)
+//   SUPPRIME     — supprimé (statut 3)
+enum UserStatus {
+  ACTIVE
+  DEPART
+  DESACTIVATE
+  SUPPRIME
+}
+
+// Statuts de demande (suppression) :
+//   NONE       — aucune demande
+//   EN_COURS   — demande en cours (statut 2)
+//   VALIDEE    — demande validée (statut 1)
+enum DemandStatus {
+  NONE
+  EN_COURS
+  VALIDEE
+}
+
+model User {
+  id               String       @id @default(cuid())
+  email            String       @unique
+  pseudo           String       @unique
+  passwordHash     String
+  status           UserStatus   @default(ACTIVE)
+  demandStatus     DemandStatus @default(NONE)
+  isProfilePrivate Boolean      @default(false)
+  avatarUrl        String?
+  city             String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  createdGames       Game[]            @relation("GameCreator")
+  participants       GameParticipant[]
+  photos             Photo[]
+  grids              Grid[]
+  refreshTokens      RefreshToken[]
+  sentFriendships    Friendship[]      @relation("FriendshipSender")
+  receivedFriendships Friendship[]     @relation("FriendshipReceiver")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique @db.VarChar(512)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─── GAMES (chasses) ────────────────────────────────────────────────
+enum GameMode {
+  SOLO
+  TEAM
+}
+
+enum GameVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum GameStatus {
+  LOBBY
+  RUNNING
+  FINISHED
+  CANCELLED
+}
+
+enum GridVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model Game {
+  id            String         @id @default(cuid())
+  inviteCode    String         @unique @db.VarChar(8)
+  creatorId     String
+  creator       User           @relation("GameCreator", fields: [creatorId], references: [id])
+  mode          GameMode       @default(SOLO)
+  teamSize      Int            @default(1) // 1 = solo/duel, 2 = duos, 3 = trios
+  maxPlayers    Int            @default(6)
+  durationMin   Int            @default(1440) // minutes
+  visibility    GameVisibility @default(PRIVATE)
+  status        GameStatus     @default(LOBBY)
+  startedAt     DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime       @default(now())
+
+  participants GameParticipant[]
+  teams        Team[]
+  photos       Photo[]
+  grids        Grid[]
+
+  @@index([inviteCode])
+  @@index([status])
+}
+
+model Team {
+  id               String  @id @default(cuid())
+  gameId           String
+  game             Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  name             String
+  assignedColorHex String  @db.VarChar(7)
+  assignedColorName String
+
+  participants GameParticipant[]
+
+  @@index([gameId])
+}
+
+model GameParticipant {
+  id              String   @id @default(cuid())
+  gameId          String
+  game            Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId          String?
+  team            Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  // Couleur individuelle (mode solo). En mode équipe, on s'appuie sur Team.assignedColor.
+  colorHex        String?  @db.VarChar(7)
+  colorName       String?
+  joinedAt        DateTime @default(now())
+
+  @@unique([gameId, userId])
+  @@index([gameId])
+}
+
+// ─── PHOTOS ─────────────────────────────────────────────────────────
+model Photo {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId             String
+  game               Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  cloudinaryUrl      String   @db.VarChar(512)
+  cloudinaryPublicId String   @db.VarChar(255)
+  takenAt            DateTime?
+  isSelectedForGrid  Boolean     @default(false)
+  gridPosition       Int?        // 0-8 (3x3)
+  createdAt          DateTime    @default(now())
+  gridPhotos         GridPhoto[]
+
+  @@index([gameId, userId])
+  @@index([gameId, isSelectedForGrid])
+}
+
+// ─── GRILLES ────────────────────────────────────────────────────────
+model Grid {
+  id         String         @id @default(cuid())
+  gameId     String
+  game       Game           @relation(fields: [gameId], references: [id])
+  userId     String
+  user       User           @relation(fields: [userId], references: [id])
+  imageUrl   String         @db.VarChar(512)
+  imageKey   String         @db.VarChar(255)
+  visibility GridVisibility @default(PRIVATE)
+  createdAt  DateTime       @default(now())
+  photos     GridPhoto[]
+
+  @@unique([gameId, userId])
+  @@index([userId])
+}
+
+model GridPhoto {
+  id           String @id @default(cuid())
+  gridId       String
+  grid         Grid   @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  photoId      String
+  photo        Photo  @relation(fields: [photoId], references: [id])
+  gridPosition Int
+
+  @@unique([gridId, gridPosition])
+}
+
+// ─── AMIS ────────────────────────────────────────────────────────────
+enum FriendshipStatus {
+  PENDING   // demande envoyée, pas encore acceptée
+  ACCEPTED  // amis
+  DECLINED  // refusée
+}
+
+model Friendship {
+  id         String           @id @default(cuid())
+  senderId   String
+  sender     User             @relation("FriendshipSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User             @relation("FriendshipReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  status     FriendshipStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId])
+}
