@@ -3,15 +3,26 @@ import type { NotificationType } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getIO } from '../sockets/games.js';
+import { sendPushToUser } from './push.js';
 
 export const notificationsRouter = Router();
 
-// Utilitaire interne : créer une notif + la pousser via socket
+const PUSH_TITLES: Record<NotificationType, string> = {
+  FRIEND_REQUEST:  '👋 Nouvelle demande d\'ami',
+  FRIEND_ACCEPTED: '✅ Demande acceptée',
+  GRID_LIKE:       '♥ Quelqu\'un a aimé ta grille',
+  GRID_COMMENT:    '💬 Nouveau commentaire',
+  GAME_STARTED:    '🎨 La partie a démarré',
+  DM:              '✉️ Nouveau message',
+};
+
+// Utilitaire interne : créer une notif + la pousser via socket + push
 export async function notifyUser(params: {
   userId: string;
   type: NotificationType;
   actorId?: string;
   entityId?: string;
+  actorPseudo?: string;
 }) {
   try {
     const notif = await prisma.notification.create({
@@ -25,7 +36,19 @@ export async function notifyUser(params: {
         actor: { select: { id: true, pseudo: true, avatarUrl: true } },
       },
     });
+
+    // Socket in-app (app ouverte)
     getIO().to(`user:${params.userId}`).emit('notification:new', notif);
+
+    // Push web (app fermée)
+    const actor = params.actorPseudo ?? notif.actor?.pseudo ?? 'Color Hunt';
+    await sendPushToUser(params.userId, {
+      title: PUSH_TITLES[params.type],
+      body: actor,
+      icon: '/icons/icon-192.png',
+      url: '/',
+    });
+
     return notif;
   } catch {
     // Ne jamais bloquer l'action principale si la notif échoue

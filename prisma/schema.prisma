@@ -59,6 +59,7 @@ model User {
   gridComments       GridComment[]
   notifications      Notification[]
   triggeredNotifs    Notification[]    @relation("NotificationActor")
+  pushSubscriptions  PushSubscription[]
 }
 
 model RefreshToken {
@@ -212,6 +213,20 @@ model DirectMessage {
 
   @@index([senderId, receiverId])
   @@index([receiverId, senderId])
+}
+
+// ─── PUSH SUBSCRIPTIONS ──────────────────────────────────────────────
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @db.VarChar(512)
+  p256dh    String   @db.VarChar(255)
+  auth      String   @db.VarChar(100)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, endpoint])
+  @@index([userId])
 }
 
 // ─── LIKES & COMMENTAIRES ────────────────────────────────────────────
