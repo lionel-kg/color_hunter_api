@@ -11,8 +11,7 @@ pipeline {
         stage('Database') {
             steps {
                 echo 'Démarrage de la base de données...'
-                sh 'docker compose up -d db'
-                sh 'docker compose run --rm db sh -c "until mysqladmin ping -h color-hunter_db --silent; do sleep 2; done"'
+                sh 'docker compose up -d'
             }
         }
 
