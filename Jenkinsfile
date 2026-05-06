@@ -29,6 +29,7 @@ pipeline {
                         --name ${CONTAINER_NAME} \
                         --network color-hunter-network \
                         -p ${APP_PORT}:${APP_PORT} \
+                        -v /home/ubuntu/color_hunter_data:/app/uploads \
                         --restart unless-stopped \
                         ${IMAGE_NAME}:latest
                     """
