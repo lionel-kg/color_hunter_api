@@ -11,7 +11,7 @@ export const photosRouter = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 },
 });
 
 function photoQuota(mode: string, teamSize: number): number {

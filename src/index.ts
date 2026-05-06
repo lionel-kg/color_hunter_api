@@ -33,7 +33,7 @@ const corsOptions = {
 
 app.use(morgan('dev'));
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '20mb' }));
+app.use(express.json({ limit: '100mb' }));
 
 if ((process.env.STORAGE_MODE ?? 'local') === 'local') {
   app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
