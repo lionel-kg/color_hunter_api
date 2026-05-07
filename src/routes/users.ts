@@ -111,7 +111,10 @@ usersRouter.get('/:userId/profile', requireAuth, async (req, res, next) => {
               userId: target.id,
               ...(meId !== targetId ? { visibility: 'PUBLIC' } : {}),
             },
-            include: { game: { select: { inviteCode: true, mode: true } } },
+            include: {
+              game: { select: { inviteCode: true, mode: true } },
+              _count: { select: { comments: true, likes: true } },
+            },
             orderBy: { createdAt: 'desc' },
           }),
       prisma.friendship.count({
