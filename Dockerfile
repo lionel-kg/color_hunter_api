@@ -13,4 +13,10 @@ COPY .env.example .env
 
 EXPOSE 4000
 
-CMD ["npm", "start"]
+# Copy the entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+RUN mkdir -p /var/lib/mysql
+RUN chmod -R 0755 /var/lib/mysql 
+# Use the entrypoint script to start the application
+ENTRYPOINT ["/app/entrypoint.sh"]
