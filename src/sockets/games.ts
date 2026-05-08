@@ -1,6 +1,7 @@
 import type { Server as SocketServer, Socket } from 'socket.io';
 import { verifyAccessToken } from '../lib/jwt.js';
 import { prisma } from '../lib/prisma.js';
+import { notifyUser } from '../routes/notifications.js';
 
 let _io: SocketServer;
 
@@ -76,6 +77,15 @@ export function registerGameSockets(io: SocketServer) {
         // Envoyer au destinataire et confirmer à l'expéditeur
         io.to(`user:${receiverId}`).emit('dm:message', message);
         socket.emit('dm:message', message);
+
+        // Push notification si l'app est fermée
+        notifyUser({
+          userId: receiverId,
+          type: 'DM',
+          actorId: user.sub,
+          actorPseudo: user.pseudo,
+          entityId: user.sub,
+        });
       } catch { /* ignore */ }
     });
 

@@ -42,11 +42,14 @@ export async function notifyUser(params: {
 
     // Push web (app fermée)
     const actor = params.actorPseudo ?? notif.actor?.pseudo ?? 'Color Hunt';
+    const url = params.type === 'DM' && params.entityId
+      ? `/chat/${params.entityId}`
+      : '/';
     await sendPushToUser(params.userId, {
       title: PUSH_TITLES[params.type],
       body: actor,
       icon: '/icons/icon-192.png',
-      url: '/',
+      url,
     });
 
     return notif;
@@ -96,6 +99,18 @@ notificationsRouter.patch('/:id/read', requireAuth, async (req, res, next) => {
     await prisma.notification.updateMany({
       where: { id: req.params.id, userId: req.user!.sub },
       data: { readAt: new Date() },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/notifications/:id — supprimer une notif
+notificationsRouter.delete('/:id', requireAuth, async (req, res, next) => {
+  try {
+    await prisma.notification.deleteMany({
+      where: { id: req.params.id, userId: req.user!.sub },
     });
     res.json({ ok: true });
   } catch (err) {

@@ -32,6 +32,7 @@ const corsOptions = {
     cb(new Error(`Origin non autorisée: ${origin}`));
   },
   credentials: true,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 };
 
 app.use(morgan('dev'));
