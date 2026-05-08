@@ -1,5 +1,6 @@
-npx prisma db push 
+#!/bin/sh
+set -e
 
-exec "$@"
-# Start the server
-npm start
+npx prisma db push
+
+exec npm start
