@@ -102,7 +102,8 @@ model Game {
   creatorId     String
   creator       User           @relation("GameCreator", fields: [creatorId], references: [id])
   mode          GameMode       @default(SOLO)
-  teamSize      Int            @default(1) // 1 = solo/duel, 2 = duos, 3 = trios
+  teamSize      Int            @default(2) // joueurs par équipe
+  numTeams      Int            @default(2) // nombre d'équipes (mode TEAM uniquement)
   maxPlayers    Int            @default(6)
   durationMin   Int            @default(1440) // minutes
   visibility    GameVisibility @default(PRIVATE)

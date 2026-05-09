@@ -24,19 +24,16 @@ const httpServer = createServer(app);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
 const ALLOWED_ORIGINS = CLIENT_ORIGIN.split(',').map(o => o.trim());
 
-const corsOptions = {
-  origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
-    // Autoriser les requêtes sans origin (mobile natif, curl, Postman)
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    console.warn('[cors] origin bloquée:', origin);
-    cb(new Error(`Origin non autorisée: ${origin}`));
-  },
+const corsOptions: cors.CorsOptions = {
+  origin: ALLOWED_ORIGINS,
   credentials: true,
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 app.use(morgan('dev'));
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '100mb' }));
 
 if ((process.env.STORAGE_MODE ?? 'local') === 'local') {
