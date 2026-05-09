@@ -38,7 +38,7 @@ gamesRouter.post('/', requireAuth, async (req, res, next) => {
         creatorId: req.user!.sub,
         participants: { create: { userId: req.user!.sub } },
       },
-      include: { participants: { include: { user: { select: { id: true, pseudo: true } } } }, teams: true },
+      include: { participants: { include: { user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } } } }, teams: true },
     });
     res.status(201).json(game);
   } catch (err) {
@@ -79,7 +79,7 @@ gamesRouter.patch('/:id', requireAuth, async (req, res, next) => {
     const fresh = await prisma.game.findUnique({
       where: { id: game.id },
       include: {
-        participants: { include: { user: { select: { id: true, pseudo: true } }, team: true } },
+        participants: { include: { user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } }, team: true } },
         teams: { orderBy: { id: 'asc' } },
       },
     });
@@ -149,7 +149,7 @@ gamesRouter.post('/join', requireAuth, async (req, res, next) => {
 
     const fresh = await prisma.game.findUnique({
       where: { id: game.id },
-      include: { participants: { include: { user: { select: { id: true, pseudo: true } } } }, teams: true },
+      include: { participants: { include: { user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } } } }, teams: true },
     });
 
     getIO().to(`game:${game.id}`).emit('game:joined', fresh);
@@ -216,7 +216,7 @@ gamesRouter.post('/:id/teams', requireAuth, async (req, res, next) => {
     const fresh = await prisma.game.findUnique({
       where: { id: game.id },
       include: {
-        participants: { include: { user: { select: { id: true, pseudo: true } }, team: true } },
+        participants: { include: { user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } }, team: true } },
         teams: true,
       },
     });
@@ -286,7 +286,7 @@ gamesRouter.post('/:id/start', requireAuth, async (req, res, next) => {
     const fresh = await prisma.game.findUnique({
       where: { id: game.id },
       include: {
-        participants: { include: { user: { select: { id: true, pseudo: true } }, team: true } },
+        participants: { include: { user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } }, team: true } },
         teams: true,
       },
     });
@@ -329,7 +329,7 @@ gamesRouter.delete('/:id/leave', requireAuth, async (req, res, next) => {
     const fresh = await prisma.game.findUnique({
       where: { id: game.id },
       include: {
-        participants: { include: { user: { select: { id: true, pseudo: true } }, team: true } },
+        participants: { include: { user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } }, team: true } },
         teams: true,
       },
     });
