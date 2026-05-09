@@ -97,7 +97,7 @@ gamesRouter.get('/', requireAuth, async (req, res, next) => {
     const games = await prisma.game.findMany({
       where: { participants: { some: { userId: req.user!.sub } }, status: { not: 'CANCELLED' } },
       include: {
-        participants: { include: { user: { select: { id: true, pseudo: true, avatarUrl: true } } } },
+        participants: { include: { user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } } } },
         teams: true,
         _count: { select: { photos: true } },
       },
@@ -116,7 +116,7 @@ gamesRouter.get('/:id', requireAuth, async (req, res, next) => {
     const game = await prisma.game.findUnique({
       where: { id: req.params.id },
       include: {
-        participants: { include: { user: { select: { id: true, pseudo: true, avatarUrl: true } }, team: true } },
+        participants: { include: { user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } }, team: true } },
         teams: true,
       },
     });

@@ -13,7 +13,7 @@ usersRouter.get('/me', requireAuth, async (req, res, next) => {
       where: { id: req.user!.sub },
       select: {
         id: true, pseudo: true, email: true, avatarUrl: true, city: true,
-        status: true, demandStatus: true, isProfilePrivate: true, createdAt: true,
+        cameraModel: true, status: true, demandStatus: true, isProfilePrivate: true, createdAt: true,
       },
     });
     if (!user) throw new HttpError(404, 'Utilisateur introuvable');
@@ -30,12 +30,13 @@ usersRouter.patch('/me', requireAuth, async (req, res, next) => {
       city: z.string().max(80).nullable().optional(),
       isProfilePrivate: z.boolean().optional(),
       avatarUrl: z.string().url().nullable().optional(),
+      cameraModel: z.string().max(120).nullable().optional(),
     }).parse(req.body);
 
     const user = await prisma.user.update({
       where: { id: req.user!.sub },
       data,
-      select: { id: true, pseudo: true, email: true, isProfilePrivate: true, city: true, avatarUrl: true },
+      select: { id: true, pseudo: true, email: true, isProfilePrivate: true, city: true, avatarUrl: true, cameraModel: true },
     });
     res.json(user);
   } catch (err) {
@@ -87,7 +88,7 @@ usersRouter.get('/:userId/profile', requireAuth, async (req, res, next) => {
 
     const target = await prisma.user.findUnique({
       where: { id: targetId },
-      select: { id: true, pseudo: true, avatarUrl: true, city: true, isProfilePrivate: true, createdAt: true },
+      select: { id: true, pseudo: true, avatarUrl: true, city: true, cameraModel: true, isProfilePrivate: true, createdAt: true },
     });
     if (!target) throw new HttpError(404, 'Utilisateur introuvable');
 

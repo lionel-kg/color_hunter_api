@@ -138,7 +138,7 @@ gridsRouter.get("/game/:gameId", requireAuth, async (req, res, next) => {
     const grids = await prisma.grid.findMany({
       where: { gameId: req.params.gameId },
       include: {
-        user: { select: { id: true, pseudo: true, avatarUrl: true } },
+        user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -177,7 +177,7 @@ gridsRouter.get("/feed", requireAuth, async (req, res, next) => {
         ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
       },
       include: {
-        user: { select: { id: true, pseudo: true, avatarUrl: true } },
+        user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } },
         game: { select: { inviteCode: true, mode: true } },
         _count: { select: { comments: true, likes: true } },
       },

@@ -43,6 +43,7 @@ model User {
   isProfilePrivate Boolean      @default(false)
   avatarUrl        String?
   city             String?
+  cameraModel      String?      @db.VarChar(120)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
