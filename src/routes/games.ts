@@ -49,7 +49,10 @@ gamesRouter.post('/', requireAuth, async (req, res, next) => {
 // Modifier les paramètres du lobby (hôte uniquement, statut LOBBY)
 gamesRouter.patch('/:id', requireAuth, async (req, res, next) => {
   try {
-    const game = await prisma.game.findUnique({ where: { id: req.params.id } });
+    const game = await prisma.game.findUnique({
+      where: { id: req.params.id },
+      include: { teams: { orderBy: { id: 'asc' } } },
+    });
     if (!game) throw new HttpError(404, 'Partie introuvable');
     if (game.creatorId !== req.user!.sub) throw new HttpError(403, 'Seul le créateur peut modifier les paramètres');
     if (game.status !== 'LOBBY') throw new HttpError(400, 'Impossible de modifier une partie déjà démarrée');
@@ -64,12 +67,20 @@ gamesRouter.patch('/:id', requireAuth, async (req, res, next) => {
     });
     const data = updateSchema.parse(req.body);
 
-    const fresh = await prisma.game.update({
+    // Si on réduit numTeams et que des Team existent déjà, supprimer les Team excédentaires
+    // (les participants assignés sont automatiquement désassignés via onDelete: SetNull)
+    if (data.numTeams !== undefined && game.teams.length > data.numTeams) {
+      const toDelete = game.teams.slice(data.numTeams).map(t => t.id);
+      await prisma.team.deleteMany({ where: { id: { in: toDelete } } });
+    }
+
+    await prisma.game.update({ where: { id: game.id }, data });
+
+    const fresh = await prisma.game.findUnique({
       where: { id: game.id },
-      data,
       include: {
         participants: { include: { user: { select: { id: true, pseudo: true } }, team: true } },
-        teams: true,
+        teams: { orderBy: { id: 'asc' } },
       },
     });
 
