@@ -16,8 +16,8 @@ const upload = multer({
 
 function photoQuota(mode: string, teamSize: number): number {
   if (mode === "SOLO") return 9;
-  if (teamSize === 3) return 3; // grille 9 slots, 3 joueurs
-  return 4; // grille 8 slots, 2 joueurs
+  if (teamSize === 3) return 3; // 3 joueurs × 3 = 9 (pile la grille)
+  return 5; // 2 joueurs × 5 = 10 photos dans le pool, 9 utilisées (chacun en écarte une)
 }
 
 // Upload de plusieurs photos dans une partie
@@ -130,27 +130,14 @@ photosRouter.get("/:gameId", requireAuth, async (req, res, next) => {
   }
 });
 
-// Sélection finale (8 ou 9 photos selon le mode)
+// Sélection finale (9 photos pour la grille)
 photosRouter.post("/:gameId/grid", requireAuth, async (req, res, next) => {
   try {
     const { photoIds } = z
       .object({
-        photoIds: z.array(z.string()).min(8).max(9),
+        photoIds: z.array(z.string()).length(9),
       })
       .parse(req.body);
-
-    const game = await prisma.game.findUnique({
-      where: { id: req.params.gameId },
-      select: { mode: true, teamSize: true },
-    });
-    if (!game) throw new HttpError(404, 'Partie introuvable');
-
-    const expectedCount = photoQuota(game.mode, game.teamSize) === 4
-      ? 8
-      : 9;
-    if (photoIds.length !== expectedCount) {
-      throw new HttpError(400, `Sélection invalide (${expectedCount} photos requises)`);
-    }
 
     const photos = await prisma.photo.findMany({
       where: {
@@ -159,8 +146,8 @@ photosRouter.post("/:gameId/grid", requireAuth, async (req, res, next) => {
         gameId: req.params.gameId,
       },
     });
-    if (photos.length !== expectedCount)
-      throw new HttpError(400, `Sélection invalide (${expectedCount} photos requises)`);
+    if (photos.length !== 9)
+      throw new HttpError(400, "Sélection invalide (9 photos requises)");
 
     await prisma.$transaction([
       prisma.photo.updateMany({
