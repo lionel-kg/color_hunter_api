@@ -13,6 +13,7 @@ const PUSH_TITLES: Record<NotificationType, string> = {
   GRID_LIKE:          '♥ Quelqu\'un a aimé ta grille',
   GRID_COMMENT:       '💬 Nouveau commentaire',
   GRID_COMMENT_REPLY: '↩️ Réponse à ton commentaire',
+  GRID_COMMENT_LIKE:  '♥ Quelqu\'un a aimé ton commentaire',
   GAME_STARTED:       '🎨 La partie a démarré',
   DM:                 '✉️ Nouveau message',
 };
@@ -54,8 +55,9 @@ export async function notifyUser(params: {
     });
 
     return notif;
-  } catch {
-    // Ne jamais bloquer l'action principale si la notif échoue
+  } catch (err) {
+    // Ne jamais bloquer l'action principale si la notif échoue, mais logger pour debug
+    console.error('[notifyUser] failed', { type: params.type, userId: params.userId }, err);
   }
 }
 

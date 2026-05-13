@@ -245,7 +245,7 @@ commentsRouter.post('/:commentId/like', requireAuth, async (req, res, next) => {
 
     const comment = await prisma.gridComment.findUnique({
       where: { id: commentId },
-      select: { id: true },
+      select: { id: true, userId: true, gridId: true },
     });
     if (!comment) throw new HttpError(404, 'Commentaire introuvable');
 
@@ -257,6 +257,15 @@ commentsRouter.post('/:commentId/like', requireAuth, async (req, res, next) => {
       await prisma.gridCommentLike.delete({ where: { id: existing.id } });
     } else {
       await prisma.gridCommentLike.create({ data: { commentId, userId } });
+      // Notifier l'auteur du commentaire (pas si c'est lui-même qui like)
+      if (comment.userId !== userId) {
+        await notifyUser({
+          userId: comment.userId,
+          type: 'GRID_COMMENT_LIKE',
+          actorId: userId,
+          entityId: `${comment.gridId}:${comment.id}`,
+        });
+      }
     }
 
     const count = await prisma.gridCommentLike.count({ where: { commentId } });

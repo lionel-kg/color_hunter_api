@@ -281,6 +281,7 @@ enum NotificationType {
   GRID_LIKE            // quelqu'un a liké ta grille
   GRID_COMMENT         // quelqu'un a commenté ta grille
   GRID_COMMENT_REPLY   // quelqu'un a répondu à ton commentaire
+  GRID_COMMENT_LIKE    // quelqu'un a aimé ton commentaire
   GAME_STARTED         // une partie a démarré
   DM                   // message direct reçu
 }
