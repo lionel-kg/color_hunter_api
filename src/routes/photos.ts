@@ -98,11 +98,30 @@ photosRouter.post(
   },
 );
 
-// Liste des photos d'un utilisateur dans une partie
+// Liste des photos disponibles pour construire sa grille :
+// - mode solo : ses propres photos uniquement
+// - mode équipe : ses photos + celles de ses coéquipiers (pool d'équipe partagé)
 photosRouter.get("/:gameId", requireAuth, async (req, res, next) => {
   try {
+    const userId = req.user!.sub;
+    const gameId = req.params.gameId;
+
+    const me = await prisma.gameParticipant.findUnique({
+      where: { gameId_userId: { gameId, userId } },
+      select: { teamId: true },
+    });
+
+    let userIdFilter: { in: string[] } | string = userId;
+    if (me?.teamId) {
+      const teammates = await prisma.gameParticipant.findMany({
+        where: { gameId, teamId: me.teamId },
+        select: { userId: true },
+      });
+      userIdFilter = { in: teammates.map((t) => t.userId) };
+    }
+
     const photos = await prisma.photo.findMany({
-      where: { gameId: req.params.gameId, userId: req.user!.sub },
+      where: { gameId, userId: userIdFilter },
       orderBy: { createdAt: "desc" },
     });
     res.json(photos);
@@ -111,14 +130,27 @@ photosRouter.get("/:gameId", requireAuth, async (req, res, next) => {
   }
 });
 
-// Sélection finale (9 photos pour la grille)
+// Sélection finale (8 ou 9 photos selon le mode)
 photosRouter.post("/:gameId/grid", requireAuth, async (req, res, next) => {
   try {
     const { photoIds } = z
       .object({
-        photoIds: z.array(z.string()).length(9),
+        photoIds: z.array(z.string()).min(8).max(9),
       })
       .parse(req.body);
+
+    const game = await prisma.game.findUnique({
+      where: { id: req.params.gameId },
+      select: { mode: true, teamSize: true },
+    });
+    if (!game) throw new HttpError(404, 'Partie introuvable');
+
+    const expectedCount = photoQuota(game.mode, game.teamSize) === 4
+      ? 8
+      : 9;
+    if (photoIds.length !== expectedCount) {
+      throw new HttpError(400, `Sélection invalide (${expectedCount} photos requises)`);
+    }
 
     const photos = await prisma.photo.findMany({
       where: {
@@ -127,8 +159,8 @@ photosRouter.post("/:gameId/grid", requireAuth, async (req, res, next) => {
         gameId: req.params.gameId,
       },
     });
-    if (photos.length !== 9)
-      throw new HttpError(400, "Sélection invalide (9 photos requises)");
+    if (photos.length !== expectedCount)
+      throw new HttpError(400, `Sélection invalide (${expectedCount} photos requises)`);
 
     await prisma.$transaction([
       prisma.photo.updateMany({

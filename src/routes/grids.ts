@@ -6,11 +6,12 @@ import { requireAuth } from "../middleware/auth.js";
 import { HttpError } from "../middleware/error.js";
 import { uploadFile, deleteFile } from "../lib/storage.js";
 import { getIO } from "../sockets/games.js";
+import { slotCount, validGridPositions, GRID_COLS, GRID_ROWS } from "../lib/gridLayout.js";
 
 export const gridsRouter = Router();
 
 const TILE_SIZE = 400; // px par cellule
-const COLS = 3;
+const COLS = GRID_COLS;
 
 async function fetchImageBuffer(url: string): Promise<Buffer> {
   // URL locale (mode local storage) ou URL distante (Cloudinary)
@@ -26,24 +27,33 @@ async function fetchImageBuffer(url: string): Promise<Buffer> {
   return Buffer.from(await res.arrayBuffer());
 }
 
-async function buildCompositeImage(photoUrls: string[]): Promise<Buffer> {
+// tiles est aligné sur les positions du canvas 3×3 : tiles[i] = photo en position i
+// (peut contenir des null si la position est laissée vide, ex. centre en duo)
+async function buildCompositeImage(photoUrlsByPosition: (string | null)[]): Promise<Buffer> {
   const tiles = await Promise.all(
-    photoUrls.map((url) =>
-      fetchImageBuffer(url).then((buf) =>
-        sharp(buf).resize(TILE_SIZE, TILE_SIZE, { fit: "cover" }).toBuffer(),
-      ),
+    photoUrlsByPosition.map((url) =>
+      url
+        ? fetchImageBuffer(url).then((buf) =>
+            sharp(buf).resize(TILE_SIZE, TILE_SIZE, { fit: "cover" }).toBuffer(),
+          )
+        : Promise.resolve(null),
     ),
   );
 
-  const rows = COLS;
   const totalW = TILE_SIZE * COLS;
-  const totalH = TILE_SIZE * rows;
+  const totalH = TILE_SIZE * GRID_ROWS;
 
-  const composites = tiles.map((buf, i) => ({
-    input: buf,
-    left: (i % COLS) * TILE_SIZE,
-    top: Math.floor(i / COLS) * TILE_SIZE,
-  }));
+  const composites = tiles
+    .map((buf, i) =>
+      buf
+        ? {
+            input: buf,
+            left: (i % COLS) * TILE_SIZE,
+            top: Math.floor(i / COLS) * TILE_SIZE,
+          }
+        : null,
+    )
+    .filter((c): c is { input: Buffer; left: number; top: number } => c !== null);
 
   return sharp({
     create: {
@@ -63,7 +73,7 @@ gridsRouter.post("/:gameId", requireAuth, async (req, res, next) => {
   try {
     const { photoIds, visibility } = z
       .object({
-        photoIds: z.array(z.string()).length(9),
+        photoIds: z.array(z.string()).min(8).max(9),
         visibility: z.enum(["PUBLIC", "PRIVATE"]).default("PRIVATE"),
       })
       .parse(req.body);
@@ -74,6 +84,15 @@ gridsRouter.post("/:gameId", requireAuth, async (req, res, next) => {
     if (!game) throw new HttpError(404, "Partie introuvable");
     if (game.status !== "FINISHED")
       throw new HttpError(400, "La partie n'est pas encore terminée");
+
+    const expectedCount = slotCount(game.mode, game.teamSize);
+    if (photoIds.length !== expectedCount) {
+      throw new HttpError(
+        400,
+        `Sélection invalide — ${expectedCount} photos requises`,
+      );
+    }
+    const positions = validGridPositions(game.mode, game.teamSize);
 
     const participant = await prisma.gameParticipant.findUnique({
       where: { gameId_userId: { gameId: game.id, userId: req.user!.sub } },
@@ -87,20 +106,34 @@ gridsRouter.post("/:gameId", requireAuth, async (req, res, next) => {
     if (existing)
       throw new HttpError(400, "Tu as déjà créé une grille pour cette partie");
 
+    // En mode équipe, on autorise les photos des coéquipiers (pool partagé)
+    let allowedUserIds: { in: string[] } | string = req.user!.sub;
+    if (participant.teamId) {
+      const teammates = await prisma.gameParticipant.findMany({
+        where: { gameId: game.id, teamId: participant.teamId },
+        select: { userId: true },
+      });
+      allowedUserIds = { in: teammates.map((t) => t.userId) };
+    }
+
     const photos = await prisma.photo.findMany({
-      where: { id: { in: photoIds }, userId: req.user!.sub, gameId: game.id },
+      where: { id: { in: photoIds }, userId: allowedUserIds, gameId: game.id },
     });
-    if (photos.length !== 9)
+    if (photos.length !== expectedCount)
       throw new HttpError(
         400,
-        "Sélection invalide — 9 photos requises et elles doivent t'appartenir",
+        `Sélection invalide — ${expectedCount} photos requises (les tiennes ou celles de tes coéquipiers)`,
       );
 
-    // Ordre imposé par photoIds (position drag & drop)
+    // photoIds[i] est placée sur la i-ème position valide du canvas 3×3
+    // (en duo, la position 4/centre est sautée → positions = [0,1,2,3,5,6,7,8])
     const photoMap = new Map(photos.map((p) => [p.id, p]));
-    const orderedUrls = photoIds.map((id) => photoMap.get(id)!.cloudinaryUrl);
+    const urlsByPosition: (string | null)[] = Array(9).fill(null);
+    photoIds.forEach((id, i) => {
+      urlsByPosition[positions[i]] = photoMap.get(id)!.cloudinaryUrl;
+    });
 
-    const compositeBuffer = await buildCompositeImage(orderedUrls);
+    const compositeBuffer = await buildCompositeImage(urlsByPosition);
     const { url: imageUrl, key: imageKey } = await uploadFile(
       compositeBuffer,
       `color-hunt/grids/${game.id}`,
@@ -114,9 +147,9 @@ gridsRouter.post("/:gameId", requireAuth, async (req, res, next) => {
         imageKey,
         visibility,
         photos: {
-          create: photoIds.map((photoId, idx) => ({
+          create: photoIds.map((photoId, i) => ({
             photoId,
-            gridPosition: idx,
+            gridPosition: positions[i],
           })),
         },
       },
