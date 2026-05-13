@@ -239,6 +239,27 @@ gridsRouter.get("/user/:userId", requireAuth, async (req, res, next) => {
   }
 });
 
+// GET /api/grids/:gridId — récupérer une grille seule (utilisé pour le deep-link notif)
+gridsRouter.get("/:gridId", requireAuth, async (req, res, next) => {
+  try {
+    const grid = await prisma.grid.findUnique({
+      where: { id: req.params.gridId },
+      include: {
+        user: { select: { id: true, pseudo: true, avatarUrl: true, cameraModel: true } },
+        game: { select: { inviteCode: true, mode: true } },
+        _count: { select: { comments: true, likes: true } },
+      },
+    });
+    if (!grid) throw new HttpError(404, "Grille introuvable");
+    if (grid.visibility === "PRIVATE" && grid.userId !== req.user!.sub) {
+      throw new HttpError(403, "Grille privée");
+    }
+    res.json(grid);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/grids/:gridId/visibility — changer la visibilité
 gridsRouter.patch(
   "/:gridId/visibility",
