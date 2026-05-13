@@ -58,6 +58,7 @@ model User {
   receivedMessages   DirectMessage[]   @relation("DMReceiver")
   gridLikes          GridLike[]
   gridComments       GridComment[]
+  gridCommentLikes   GridCommentLike[]
   notifications      Notification[]
   triggeredNotifs    Notification[]    @relation("NotificationActor")
   pushSubscriptions  PushSubscription[]
@@ -245,15 +246,32 @@ model GridLike {
 }
 
 model GridComment {
-  id        String   @id @default(cuid())
-  gridId    String
-  grid      Grid     @relation(fields: [gridId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  text      String   @db.VarChar(500)
-  createdAt DateTime @default(now())
+  id              String        @id @default(cuid())
+  gridId          String
+  grid            Grid          @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text            String        @db.VarChar(500)
+  createdAt       DateTime      @default(now())
+  parentCommentId String?
+  parentComment   GridComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         GridComment[] @relation("CommentReplies")
+  likes           GridCommentLike[]
 
   @@index([gridId])
+  @@index([parentCommentId])
+}
+
+model GridCommentLike {
+  id        String      @id @default(cuid())
+  commentId String
+  comment   GridComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([commentId, userId])
+  @@index([commentId])
 }
 
 // ─── NOTIFICATIONS ───────────────────────────────────────────────────
