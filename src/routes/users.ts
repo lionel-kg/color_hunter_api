@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { HttpError } from '../middleware/error.js';
 import { getIO } from '../sockets/games.js';
+import { notifyUser } from './notifications.js';
 
 export const usersRouter = Router();
 
@@ -160,8 +161,14 @@ usersRouter.post('/friends/request/:userId', requireAuth, async (req, res, next)
       },
     });
 
-    // Notifier le destinataire en temps réel
+    // Notifier le destinataire en temps réel (page Social) + cloche persistante
     getIO().to(`user:${targetId}`).emit('friend:request', friendship);
+    await notifyUser({
+      userId: targetId,
+      type: 'FRIEND_REQUEST',
+      actorId: meId,
+      entityId: friendship.id,
+    });
 
     res.status(201).json(friendship);
   } catch (err) {
@@ -181,6 +188,15 @@ usersRouter.post('/friends/accept/:friendshipId', requireAuth, async (req, res, 
       where: { id: friendship.id },
       data: { status: 'ACCEPTED' },
     });
+
+    // Notifier l'envoyeur que sa demande a été acceptée
+    await notifyUser({
+      userId: friendship.senderId,
+      type: 'FRIEND_ACCEPTED',
+      actorId: req.user!.sub,
+      entityId: friendship.id,
+    });
+
     res.json(updated);
   } catch (err) {
     next(err);
