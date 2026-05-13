@@ -216,9 +216,10 @@ commentsRouter.post('/:gridId', requireAuth, async (req, res, next) => {
       if (parentAuthorId && parentAuthorId !== userId) {
         await notifyUser({
           userId: parentAuthorId,
-          type: 'GRID_COMMENT',
+          type: 'GRID_COMMENT_REPLY',
           actorId: userId,
-          entityId: gridId,
+          // entityId encode "gridId:commentId" pour que le front puisse scroller à la fois sur la grille et sur la réponse
+          entityId: `${gridId}:${comment.id}`,
         });
       }
     } else if (grid.userId !== userId) {
@@ -226,7 +227,7 @@ commentsRouter.post('/:gridId', requireAuth, async (req, res, next) => {
         userId: grid.userId,
         type: 'GRID_COMMENT',
         actorId: userId,
-        entityId: gridId,
+        entityId: `${gridId}:${comment.id}`,
       });
     }
 

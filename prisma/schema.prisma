@@ -276,12 +276,13 @@ model GridCommentLike {
 
 // ─── NOTIFICATIONS ───────────────────────────────────────────────────
 enum NotificationType {
-  FRIEND_REQUEST    // demande d'ami reçue
-  FRIEND_ACCEPTED   // ami accepté
-  GRID_LIKE         // quelqu'un a liké ta grille
-  GRID_COMMENT      // quelqu'un a commenté ta grille
-  GAME_STARTED      // une partie a démarré
-  DM                // message direct reçu
+  FRIEND_REQUEST       // demande d'ami reçue
+  FRIEND_ACCEPTED      // ami accepté
+  GRID_LIKE            // quelqu'un a liké ta grille
+  GRID_COMMENT         // quelqu'un a commenté ta grille
+  GRID_COMMENT_REPLY   // quelqu'un a répondu à ton commentaire
+  GAME_STARTED         // une partie a démarré
+  DM                   // message direct reçu
 }
 
 model Notification {

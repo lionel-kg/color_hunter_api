@@ -8,12 +8,13 @@ import { sendPushToUser } from './push.js';
 export const notificationsRouter = Router();
 
 const PUSH_TITLES: Record<NotificationType, string> = {
-  FRIEND_REQUEST:  '👋 Nouvelle demande d\'ami',
-  FRIEND_ACCEPTED: '✅ Demande acceptée',
-  GRID_LIKE:       '♥ Quelqu\'un a aimé ta grille',
-  GRID_COMMENT:    '💬 Nouveau commentaire',
-  GAME_STARTED:    '🎨 La partie a démarré',
-  DM:              '✉️ Nouveau message',
+  FRIEND_REQUEST:     '👋 Nouvelle demande d\'ami',
+  FRIEND_ACCEPTED:    '✅ Demande acceptée',
+  GRID_LIKE:          '♥ Quelqu\'un a aimé ta grille',
+  GRID_COMMENT:       '💬 Nouveau commentaire',
+  GRID_COMMENT_REPLY: '↩️ Réponse à ton commentaire',
+  GAME_STARTED:       '🎨 La partie a démarré',
+  DM:                 '✉️ Nouveau message',
 };
 
 // Utilitaire interne : créer une notif + la pousser via socket + push
